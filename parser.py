@@ -3,7 +3,7 @@ import cv2
 import os
 
 grid_folder = "C:/Users/Admired AI Men/Documents/Projects/Sudoku Solver/Sudoku grids/"
-grid_path = grid_folder + os.listdir(grid_folder)[19]
+grid_path = grid_folder + os.listdir(grid_folder)[24]
 
 
 org_grid = cv2.imread(grid_path, 0)
@@ -56,7 +56,7 @@ if len(contours_area) >= 10 or best_contour_area <= 90000:
     print("Assume full frame")
 # best_contour_bis = cv2.approxPolyDP(best_contour, 5, True)
 
-best_contour = cv2.drawContours(
+best_contour_grid = cv2.drawContours(
     resized_grid_color.copy(), [best_contour], 0, (0, 255, 0), 2
 )
 
@@ -64,11 +64,23 @@ best_contour = cv2.drawContours(
 #     resized_grid_color.copy(), [best_contour_bis], 0, (0, 255, 0), 2
 # )
 
+best_contour_mask = cv2.drawContours(
+    np.zeros((resized_grid.shape), dtype=float), [best_contour], 0, 255, 2
+)
+best_contour_mask = np.float32(best_contour_mask)
+corners = cv2.cornerHarris(best_contour_mask, 30, 5, 0.04)
+corners = cv2.dilate(corners, None)
+resized_grid_color[corners > 0.8 * dst.max()] = [0, 0, 255]
+
+for (x, y) in corners:
+    cv2.circle(resized_grid_color, (int(x), int(y)), 5, (0, 0, 255), -1)
+
 cv2.imshow("canny", canny_grid)
 cv2.imshow("all_contours", all_contours)
-cv2.imshow("best_contour", best_contour)
+cv2.imshow("best_contour", best_contour_grid)
 # cv2.imshow("best_contour_bis", best_contour_bis)
 cv2.imshow("resized_grid", resized_grid)
+cv2.imshow("corners", resized_grid_color)
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
