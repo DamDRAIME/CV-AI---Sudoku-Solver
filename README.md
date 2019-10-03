@@ -2,7 +2,7 @@
 End-to-end Sudoku solver in Python. From the image of a Sudoku grid, our goal will be to create a Sudoku solver that returns the solved grid to the user.
 
 ## Sudoku Solver
-As mentioned, the input to our Sudoku solver will be an image of a Sudoku grid. Hence two obstacles have to be overcome before tackling the constraints problem (i.e. the Sudoku).
+As mentioned, the input to our Sudoku solver will be an image of a Sudoku grid. Hence two obstacles have to be overcome before tackling the constraint satisfaction problem (i.e. the Sudoku).
 
 We indeed need to first parse the image so that the digits from all non-blank cells are extracted. Only once this pre-filled grid has been extracted, Constraint Logic Programming techniques can be applied to solve the Sudoku. 
 
@@ -65,7 +65,30 @@ x = Dropout(0.5)(x)
 x = Dense(output_dim, activation='linear')(x)
 ```
 
+Once the four corners of the grid are predicted we can unwarp the grid (which is usually the case for grids from newspaper), and extract the cells. Those cells will then be processed by the second CNN.
 ### Step 02 - Digit recognition
+This second CNN is used to recognise what a cell contains. The second data set was used to train this CNN. This data set was also augmented via affine transformations.
+
+The CNN structure that was used for this task is given below:
+```Python
+input_digit = Input(shape=input_dim)
+x = Conv2D(32, (3, 3), activation='relu', padding='same')(input_digit)
+x = MaxPooling2D((2, 2), padding='same')(x)
+x = Conv2D(64, (3, 3), activation='relu', padding='same')(x)
+x = MaxPooling2D((2, 2), padding='same')(x)
+x = Dropout(0.25)(x)
+x = Flatten()(x)
+x = Dense(128, activation='relu')(x)
+x = Dropout(0.5)(x)
+x = Dense(output_dim, activation='softmax')(x)
+```
+
+The average accuracy of our CNN trained for 12 epochs was 0.916 on the test set. Here is the confusion matrix on test set:
+
+![](/CM-digit.JPG?raw=true)
+
+As we can see our digit recognition model has the most difficulty with the digit 6 which is often mistaken for a 4.
+
 ### Step 03 - Constraints Problems Solver
 ## Usage
 ## Requirements
