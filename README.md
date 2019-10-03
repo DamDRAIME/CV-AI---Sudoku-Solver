@@ -90,7 +90,10 @@ The average accuracy of our CNN trained for 12 epochs was 0.916 on the test set.
 As we can see our digit recognition model has the most difficulty with the digit 6 which is often mistaken for a 4.
 
 ### Step 03 - Constraint Satisfaction Problems Solver
-Finally, to solve the Sudoku, I used the [python-constraint library](https://pypi.org/project/python-constraint/).
+Finally, to solve the Sudoku, I used the [python-constraint library](https://pypi.org/project/python-constraint/), which can easily be installed with the following command line:
+```
+pip install python-constraint
+```
 
 ## Usage
 ## Requirements
