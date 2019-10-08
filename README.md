@@ -144,7 +144,21 @@ Are there some corrections to be done? (y/n)
 ```
 In our case, no modification needs to be done and thus we can input a `n` in the terminal. In case corrections would be necessary, press `y` and follow the instructions.
 
-Note that you can disable these user intervention messages for both the corners detection and the digits recognition by passing `false` to the arguments `allow_user_coord_correction`, and `allow_user_digit_correction`, respectively, in the main function.
+_Note that you can disable these user intervention messages for both the corners detection and the digits recognition by passing `false` to the arguments `allow_user_coord_correction`, and `allow_user_digit_correction`, respectively, in the main function._
+
+Now that the image is successfully parsed into a grid, the next step is to solve the Sudoku.
+```
+>>>Here is the solved Sudoku grid:
+[[6 8 9 5 7 4 1 2 3]
+ [2 3 5 1 6 8 7 4 9]
+ [7 4 1 2 9 3 8 6 5]
+ [1 6 3 4 2 7 9 5 8]
+ [9 5 8 3 1 6 4 7 2]
+ [4 7 2 9 8 5 3 1 6]
+ [5 1 7 8 3 2 6 9 4]
+ [8 9 4 6 5 1 2 3 7]
+ [3 2 6 7 4 9 5 8 1]]
+```
 
 ## Requirements
 - Python 3.x
