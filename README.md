@@ -66,6 +66,8 @@ x = Dense(output_dim, activation='linear')(x)
 ```
 
 Once the four corners of the grid are predicted we can unwarp the grid (which is usually the case for grids from newspaper), and extract the cells. Those cells will then be processed by the second CNN.
+
+Since the data set was quite small in size, the detection of corners is not very precise. Hence, it is possible to display a window asking the user to validate the predicted coordinates of the corners or modify those.
 ### Step 02 - Digit recognition
 This second CNN is used to recognise what a cell contains. The second data set was used to train this CNN. This data set was also augmented via affine transformations.
 
@@ -87,7 +89,7 @@ The average accuracy of our CNN trained for 12 epochs was 0.916 on the test set.
 
 ![](/CM-digit.JPG?raw=true)
 
-As we can see our digit recognition model has the most difficulty with the digit 6 which is often mistaken for a 4.
+As we can see our digit recognition model has the most difficulty with the digit 6 which is often mistaken for a 4. Note that it is possible to display a window asking the user to validate the predicted digits or modify those predictions.
 
 ### Step 03 - Constraint Satisfaction Problems Solver
 Finally, to solve the Sudoku, I used the [python-constraint library](https://pypi.org/project/python-constraint/), which can easily be installed with the following command line:
@@ -96,6 +98,54 @@ pip install python-constraint
 ```
 
 ## Usage
+To solve a Sudoku grid for which you have an image, you can call the `solve_sudoku()` function. Let me illustrate this through an example. Here is the grid I will be using for it:
+
+<img src="/Sudoku%20grids/original/Grid-23.jpg" width="250" height="250">
+
+I pass as the main argument of the `solve_sudoku()` function the path to my Sudoku grid.
+```Python
+my_sudoku_grid = r"path/to/my/grid.png"
+my_grid_detection_model_path = r"path/to/grid_detection_model.h5"
+my_digit_recognition_model_path = r"path/to/digit_recognition_model.h5"
+solved_grid = solve_sudoku(image_path = my_sudoku_grid, grid_detection_model_path = my_grid_detection_model_path,
+                          digit_recognition_model_path = my_digit_recognition_model_path)
+```
+As mentioned above, the grid detection model is not very precise due to the lack of training data. Hence, by default, a window will pop up asking the user to confirm that the detected corners are the good ones before going any further.
+
+```
+>>>Here are the corners detected by the Sudoku Solver:
+```
+<img src="/Capture-grid-detection.JPG" width="250" height="250">
+
+As you can see, in this example, the detected corners are not perfectly located. The user can remedy to this by clicking on the corners of the grid. (Be careful about the order). If nothing needs to be modified, then the user can simply close this window and the rest of the program will execute. Since we had to modify the corners coordinates in our example, we got a confirmation message after we have manually clicked on the four corners:
+
+```
+>>>Thanks for your input. The following coordinates were saved:
+[[ 52  43]
+ [277  42]
+ [280 274]
+ [ 52 281]]
+```
+
+Now each cell will be extracted from the grid and the digit it contains (or absence of digit) will be predicted by the second CNN. Again here, we can ask the user intervention in case we are not confident with our model. If we do so, then such a message will appear:
+
+```
+>>>Here is the grid as detected by the Sudoku Solver:
+[[0 8 9 0 0 0 1 2 0]
+ [2 0 0 1 0 8 0 0 9]
+ [0 0 0 0 0 0 0 0 0]
+ [1 0 0 4 0 7 0 0 8]
+ [0 5 8 0 0 0 4 7 0]
+ [4 0 0 9 0 5 0 0 6]
+ [0 0 0 0 0 0 0 0 0]
+ [8 0 0 6 0 1 0 0 7]
+ [0 2 6 0 0 0 5 8 0]]
+Are there some corrections to be done? (y/n)
+```
+In our case, no modification needs to be done and thus we can input a `n` in the terminal. In case corrections would be necessary, press `y` and follow the instructions.
+
+Note that you can disable these user intervention messages for both the corners detection and the digits recognition by passing `false` to the arguments `allow_user_coord_correction`, and `allow_user_digit_correction`, respectively, in the main function.
+
 ## Requirements
 - Python 3.x
 - numpy
