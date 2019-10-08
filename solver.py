@@ -1,8 +1,7 @@
 import constraint as clp
 import numpy as np
-import time
 
-def solveSudoku(grid, unknownVariableSymbol=0):
+def solve_grid(grid, unknownVariableSymbol=0):
     """
     Function to solve a sudoku grid with constraint logic programming.
     Only supports classic sudoku grids.
@@ -16,8 +15,6 @@ def solveSudoku(grid, unknownVariableSymbol=0):
     assert grid.shape == (9, 9), '\'grid\' should be a numpy.ndarray of shape (9,9)'
     if type(unknownVariableSymbol) == int:
         assert not 1 <= unknownVariableSymbol <= 9, '\'unknownVariableSymbol\' should not be between 1 and 9'
-
-    tic = time.time()
 
     if unknownVariableSymbol != 0:
         grid[grid == unknownVariableSymbol] = 0
@@ -54,15 +51,4 @@ def solveSudoku(grid, unknownVariableSymbol=0):
     solutionDic = sudoku.getSolution()
     solution = [solutionDic[key] for key in variablesGrid.flatten()]
 
-    toc = time.time()
-    elapsed_time = toc - tic
-
-    return np.reshape(solution, (9, 9)), elapsed_time
-
-grid = [0,0,5,9,0,1,8,0,0,0,0,9,0,0,0,6,0,0,0,8,0,0,2,0,0,9,0,0,9,0,0,7,0,0,4,0,8,0,3,4,0,5,7,0,2,0,7,0,0,1,0,0,3,0,0,1,0,0,4,0,0,5,0,0,0,8,0,0,0,4,0,0,0,0,7,2,0,3,1,0,0]
-grid = np.array(grid).reshape((9,9))
-print(grid)
-
-solvedGrid, elapsed_time = solveSudoku(grid)
-print(solvedGrid)
-print(elapsed_time)
+    return np.reshape(solution, (9, 9))

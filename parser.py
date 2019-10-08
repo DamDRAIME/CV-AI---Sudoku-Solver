@@ -1,16 +1,15 @@
 import numpy as np
+import cv2
+import os
+import matplotlib.pyplot as plt
+import solver
 from keras.layers import Input, Dense, Conv2D, MaxPooling2D, Flatten, Dropout
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import load_model
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
-from sklearn.utils.multiclass import unique_labels
 from keras.models import Model
-import seaborn as sn
-import pandas as pd
-import cv2
-import os
-import matplotlib.pyplot as plt
+
 
 grids_folder = "C:/Users/Admired AI Men/Documents/Projects/Sudoku Solver/Sudoku grids/original"
 grids_folder_result = "C:/Users/Admired AI Men/Documents/Projects/Sudoku Solver/Sudoku grids/formatted"
@@ -26,6 +25,7 @@ def format_grids(original_grids_folder: str, formatted_grids_folder: str):
     :param formatted_grids_folder: Path to the folder containing the resulting formatted grids
     :return: None
     """
+
     for grid_file in os.listdir(original_grids_folder):
         grid_path = os.path.join(original_grids_folder, grid_file)
 
@@ -39,13 +39,22 @@ def format_grids(original_grids_folder: str, formatted_grids_folder: str):
 
 
 def format_grid(image: np.ndarray):
+    """
+    Function to format an image/grid. Image will be standardized, resized, and a border will be added.
+    :param image: image that needs to be formatted
+    :return: np.ndarray - formatted image/grid
+    """
+
     if image.shape[-1] == 1:
         image = image.squeeze(-1)
     image = cv2.resize(image, (300, 300), cv2.INTER_LINEAR)
     image = cv2.copyMakeBorder(image, 5, 5, 5, 5, cv2.BORDER_CONSTANT, None, 255)
+
+    #  Standardization
     image_std = image.copy()
     image_std -= np.mean(image_std)
     image_std /= np.std(image_std)
+
     return np.expand_dims(image, axis=-1), np.expand_dims(image_std, axis=-1)
 
 
@@ -89,7 +98,6 @@ def load_grids(grids_dir: str):
 
     for grid_file in os.listdir(grids_dir):
         grid_path = os.path.join(grids_dir, grid_file)
-        grid = cv2.imread(grid_path, 0)
         x.append(cv2.imread(grid_path, 0))
 
     x = np.array(x)
@@ -175,14 +183,27 @@ def unwarp_img(image: np.ndarray, landmark_coord: np.ndarray, new_dim: tuple=(30
     return unwarped
 
 
-def onclick(event):
+def _onclick(event):
+    """
+    Internal function to store the coordinates of the mouse when clicked.
+    :param event: a mouse click
+    :return: None
+    """
+
     x, y = event.xdata, event.ydata
+
+    #  The first click should remove the four corners predicted by the CNN
     if not user_coords:
         for scatter in scatters:
             scatter.remove()
+
+    #  user_coords stores the coordinates of the mouse when clicked.
     user_coords.append([x, y])
+
+    #  Only the first 4 clicks are taken into account
     if len(user_coords) == 4:
         plt.close('all')
+
     ax.scatter(x, y)
     plt.show()
 
@@ -198,12 +219,13 @@ def visualize_img_ldmk(image: np.ndarray, landmark_coord: np.ndarray, title: str
     :param user_input: Record the coordinates of the mouse when clicked by the user
     :return: None
     """
+
     fig = plt.figure(figsize=(5, 5))
     if user_input:
         plt.title('Close the window if no corrections need to be made, \n'
                   'or click on the four corners starting from the one on the top left, \n'
                   'and then clock wise to the bottom left corner', fontsize=6, ha='center')
-        fig.canvas.mpl_connect('button_press_event', onclick)
+        fig.canvas.mpl_connect('button_press_event', _onclick)
     global ax
     ax = fig.add_subplot(1, 1, 1)
     if len(image.shape) == 3 and image.shape[2] == 1:
@@ -269,6 +291,13 @@ def extract_and_save_cells_from_grids(grids_folder: str, coords_folder: str, dig
 
 
 def user_coord_correction(image: np.ndarray, corner_coords: np.ndarray):
+    """
+    Function used to ask a user input on the predicted corners' coordinates.
+    :param image: image of the formatted Sudoku grid that was used for the prediction
+    :param corner_coords: coordinates of the four corners that have been predicted by the CNN model
+    :return: np.ndarray - corner_coords if the user didn't wish to edit them or the new coordinates provided by the user
+    """
+
     global user_coords
     user_coords = []
 
@@ -281,12 +310,18 @@ def user_coord_correction(image: np.ndarray, corner_coords: np.ndarray):
         print(user_coords)
         return user_coords
     else:
-        print('You wished not to make any corrections to the predicted coordinates of the four corners made by '
+        print('You did not wish to make any corrections to the predicted coordinates of the four corners made by '
               'the Sudoku Solver.')
         return corner_coords
 
 
 def user_digit_correction(grid: list):
+    """
+    Function used to ask a user input on the predicted digits of the grid. Zeros symbolize blank cells.
+    :param grid: list of all the digits (and blank cells) that were predicted by the CNN model
+    :return: list - the same grid or the grid altered by user inputs
+    """
+
     from ast import literal_eval
     print('Here is the grid as detected by the Sudoku Solver:')
     while True:
@@ -336,31 +371,82 @@ def user_digit_correction(grid: list):
     return grid
 
 
-def parse_sudoku_grid(image: np.ndarray, grid_detection_model_path: str, digit_recognition_model_path: str,
+def parse_sudoku_grid(image_path: str, grid_detection_model_path: str, digit_recognition_model_path: str,
                       allow_user_digit_correction: bool=True, allow_user_coord_correction: bool=True):
+    """
+    Function to parse a Sudoku grid. Starting from an image of the Sudoku grid, the parser will first format it, then
+    detect the grid to unwarp it, and finally detect and recognize the digits.
+    :param image_path: path to the original image of the grid
+    :param grid_detection_model_path: path to the .h5 model for grid/corners detection
+    :param digit_recognition_model_path: path to the .h5 model for digit recognition
+    :param allow_user_digit_correction: True = allow the user to verify and alter the predicted digits; False = contrary
+    :param allow_user_coord_correction: True = allow the user to verify and alter the predicted corners; False = contrary
+    :return: np.ndarray - Array (9, 9) predicted digits
+    """
+
+    img = cv2.imread(image_path, 0).astype('float')
 
     # Part 1: preformatting, detecting the grid, and unwarping it
-    formatted_image, formatted_std_image = format_grid(image)
+    formatted_img, formatted_std_img = format_grid(img)
     grid_model = load_model(grid_detection_model_path)
-    corners_coord = np.rint(grid_model.predict(np.array([formatted_std_image])))
+    corners_coord = np.rint(grid_model.predict(np.array([formatted_std_img])))
     corners_coord = corners_coord.reshape((4, 2))
+
     if allow_user_coord_correction:
-        corners_coord = user_coord_correction(formatted_image, corners_coord)
-    unwarped_image = unwarp_img(formatted_std_image, corners_coord)
+        corners_coord = user_coord_correction(formatted_img, corners_coord)
+
+    unwarped_img = unwarp_img(formatted_std_img, corners_coord)
 
     # Part 2: extracting cells, and recognizing digits
     digit_model = load_model(digit_recognition_model_path)
     grid = []
-    for cell in extract_cells_from_grid(unwarped_image):
+
+    for cell in extract_cells_from_grid(unwarped_img):
         cell = np.array([np.expand_dims(cell, axis=-1)])
         grid.append(np.argmax(digit_model.predict(cell)))
+
     grid = np.array(grid).reshape((9, 9))
+
     if allow_user_digit_correction:
         grid = user_digit_correction(grid)
+
     return grid
 
 
-def digit_recognition(X, y):
+def solve_sudoku(image_path: str, grid_detection_model_path: str, digit_recognition_model_path: str,
+                 allow_user_digit_correction: bool=True, allow_user_coord_correction: bool=True):
+    """
+    Function to solve a Sudoku grid. Starting from an image of the Sudoku grid, the parser will first format it, then
+    detect the grid to unwarp it, and finally detect and recognize the digits. Then the solver will solve the grid.
+    :param image_path: path to the original image of the grid
+    :param grid_detection_model_path: path to the .h5 model for grid/corners detection
+    :param digit_recognition_model_path: path to the .h5 model for digit recognition
+    :param allow_user_digit_correction: True = allow the user to verify and alter the predicted digits; False = contrary
+    :param allow_user_coord_correction: True = allow the user to verify and alter the predicted corners; False = contrary
+    :return: np.ndarray - Array (9, 9) predicted digits
+    """
+    #  Parsing the image to get the grid
+    grid = parse_sudoku_grid(image_path, grid_detection_model_path, digit_recognition_model_path,
+                             allow_user_digit_correction, allow_user_coord_correction)
+
+    #  Solving the grid
+    solved_grid = solver.solve_grid(grid)
+
+    print('Here is the solved Sudoku grid:')
+    print(solved_grid)
+    return solved_grid
+
+
+def digit_recognition(X: np.ndarray, y: np.ndarray):
+    """
+    Function used to train a CNN model to recognize digits.
+    :param X: array of shape (N, X, Y, 1) containing the grids. Can be obtained with load_grids()
+    :param y: array of shape (N, 4, 2) containing the ground-truth coordinates for the corners. Can be obtained
+    with load_corners_coordinates()
+    :return: np.ndarray - Array with the ground-truth labels for the test set;
+    np.ndarray - Array with the predicted labels for the test set; model
+    """
+
     datagen_args = dict(
         samplewise_center=True,
         samplewise_std_normalization=True,
@@ -399,41 +485,22 @@ def digit_recognition(X, y):
                         validation_data=(x_test, y_test),
                         verbose=1)
     y_pred = model.predict(x_test)
-    model.save(r'C:\Users\Admired AI Men\Documents\Projects\Sudoku Solver\digit_recognition_model.h5')
-    return y_test, y_pred
 
-
-def plot_confusion_matrix(y_true, y_pred, classes,
-                          normalize=False,
-                          title=None):
-    """
-    This function prints and plots the confusion matrix.
-    Normalization can be applied by setting `normalize=True`.
-    """
-
-    # Compute confusion matrix
-    cm = confusion_matrix(y_true, y_pred)
-    if normalize:
-        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-
-    df_cm = pd.DataFrame(cm, classes, classes)
-    sn.set(font_scale=1.4)  # for label size
-    sn.heatmap(df_cm, annot=True, annot_kws={"size": 16})  # font size
-    plt.show()
+    return y_test, y_pred, model
 
 
 class ImageDataGenerator_landmarks(object):
     def __init__(self,
                  datagen_args,
                  preprocessing_function=None):
-        '''
-        datagen : Keras's ImageDataGenerator
-        preprocessing_function : The function that will be implied on each input.
-                                 The function will run after the image is resized and augmented.
-                                 The function should take one argument: one image (Numpy tensor with rank 3),
-                                 and should output a Numpy
-
-        '''
+        """
+        ImageDataGenerator for Keras that can take as input an image and a set of landmarks coordinates. Images are
+        transformed through affine transformations and returned. The coordinates are also adjusted accordingly.
+        If a transformed image results in the vanishing of at least one landmark, this transformed image is discarded
+        from the output.
+        :param datagen_args: Keras's ImageDataGenerator arguments
+        :param preprocessing_function: The function that will be applied to each input.
+        """
 
         self.datagen = ImageDataGenerator(**datagen_args)
         self.mask_channel = None
@@ -453,11 +520,6 @@ class ImageDataGenerator_landmarks(object):
         return x
 
     def flow(self, img_with_mask, batch_size):
-        '''
-        imgs: the numpy image array : (batch, height, width, image channels + 1)
-              the channel (self.loc_mask)th channel must contain mask
-        '''
-
         self.batch_size = batch_size
         generator = self.datagen.flow(img_with_mask, batch_size=self.batch_size)
 
@@ -478,18 +540,6 @@ class ImageDataGenerator_landmarks(object):
             yield [x_batch, y_batch]
 
     def _keep_only_valid_instances(self, img_with_mask):
-        '''
-        Transform the mask to (x,y)-coordinates.
-        Depending on the translation, landmark(s) may "disappear".
-        For example, if the image is excessively zoomed in,
-        the mask may lose the index of landmark.
-        Such image translation is thus discarded.
-
-        x_train and y_train could be an empty array
-        if landmarks of all the translated images are lost i.e.
-        np.array([])
-        '''
-
         x_train, y_train = [], []
 
         for img_with_mask_instance in img_with_mask:
@@ -509,10 +559,6 @@ class ImageDataGenerator_landmarks(object):
         return x_train, y_train
 
     def _find_coord_from_mask(self, y_mask):
-        '''
-        ymask : a mask of shape (height, width, 1)
-        '''
-
         y_coord = []
 
         for i in range(1, self.nbr_landmarks + 1):
@@ -528,7 +574,6 @@ class ImageDataGenerator_landmarks(object):
         return np.array(y_coord)
 
     def get_y_mask(self, image: np.ndarray, landmark_coord: np.ndarray):
-
         y_mask = np.zeros((image.shape[0], image.shape[1], 1))
 
         for landmark_i, (x, y) in enumerate(landmark_coord):
@@ -537,7 +582,6 @@ class ImageDataGenerator_landmarks(object):
         return y_mask
 
     def get_img_with_mask(self, image: np.ndarray, landmark_coord: np.ndarray):
-
         self.mask_channel = image.shape[-1]
         self.nbr_landmarks = landmark_coord.shape[1]
 
@@ -552,6 +596,15 @@ class ImageDataGenerator_landmarks(object):
 
 
 def grid_detection(X, y):
+    """
+    Function used to train a CNN model to recognize grid and output its corners' coordinates.
+    :param X: array of shape (N, X, Y, 1) containing the grids. Can be obtained with load_grids()
+    :param y: array of shape (N, 4, 2) containing the ground-truth coordinates for the corners. Can be obtained
+    with load_corners_coordinates()
+    :return: np.ndarray - Array with the ground-truth labels for the test set;
+    np.ndarray - Array with the predicted labels for the test set; model
+    """
+
     datagen_args = dict(
         samplewise_center=False,
         samplewise_std_normalization=False,
@@ -600,54 +653,9 @@ def grid_detection(X, y):
                         validation_data=(x_test, y_test),
                         verbose=1)
     y_pred = model.predict(x_test)
-    model.save(r'C:\Users\Admired AI Men\Documents\Projects\Sudoku Solver\grid_detection_model.h5')
-    return y_test, y_pred
 
+    return y_test, y_pred, model
 
-
-
-#extract_and_save_digits_from_grids(grids_folder_result, coords_folder, digits_folder)
-
-# datagen_args = dict(
-#         samplewise_center=False,
-#         samplewise_std_normalization=False,
-#         rotation_range=5,
-#         width_shift_range=10,
-#         height_shift_range=10,
-#         shear_range=0,
-#         horizontal_flip=False,
-#         vertical_flip=False)
-#
-# gen = ImageDataGenerator_landmarks(datagen_args, 'standardization')
-X = load_grids(grids_folder_result)
-y = load_corners_coordinates(coords_folder)[0]
-grid_detection_model = r'C:\Users\Admired AI Men\Documents\Projects\Sudoku Solver\grid_detection_model.h5'
-digit_detection_model = r'C:\Users\Admired AI Men\Documents\Projects\Sudoku Solver\digit_recognition_model.h5'
-
-#grid_detection(X, y)
-
-parse_sudoku_grid(np.expand_dims(X[1], axis=-1), grid_detection_model, digit_detection_model)
-#
-# for x_train, y_train in gen.flow(xy, batch_size=1):
-#     visualize_img_ldmk(x_train[0], y_train[0])
-
-
-# user_coord_correction(x[1], load_corners_coordinates(coords_folder)[0][1])
-
-# dig, lab = load_digits(digits_folder)
-# print(dig.shape)
-# print(lab.shape)
-# y_test, y_pred = digit_recognition(dig, lab)
-# y_test = np.argmax(y_test, axis=1)
-# y_pred = np.argmax(y_pred, axis=1)
-#
-#
-# np.set_printoptions(precision=2)
-#
-#
-# # Plot normalized confusion matrix
-# plot_confusion_matrix(y_test, y_pred, classes=[i for i in range(10)], normalize=True,
-#                       title='Normalized confusion matrix')
 
 
 
