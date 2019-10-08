@@ -166,4 +166,6 @@ Now that the image is successfully parsed into a grid, the next step is to solve
 - [python-constraint](https://pypi.org/project/python-constraint/)
 - cv2
 - matplotlib
+- tensorflow
+- keras
 
